@@ -587,8 +587,11 @@ function parseFont() {
         onLoad(buffer);
       })
       .catch(error => {
+        if (optional) {
+          console.warn(`Optional font failed to load/parsing ${label}:`, error);
+          return null;
+        }
         console.error(`Error fetching/parsing ${label}:`, error);
-        if (optional) return null;
         throw error;
       });
   };
