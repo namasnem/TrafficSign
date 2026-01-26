@@ -10,11 +10,13 @@ import { i18n } from '../i18n/i18n.js';
 
 const FontPriorityManager = {
   fontPriorityList: ['parsedFontKorean', 'parsedFontChinese', 'parsedFontChocolate', 'parsedFontHK'], // Default priority
+  englishCustomFontList: [],
   /**
    * Initialize font priority system
    */
   initialize: function () {
     FontPriorityManager.loadFontPriorityFromStorage();
+    FontPriorityManager.loadEnglishFontListFromStorage();
 
   },
 
@@ -161,6 +163,56 @@ const FontPriorityManager = {
   },
 
   /**
+   * Show the English font upload modal
+   * @param {Function} onApply - Optional callback to run after applying changes
+   */
+  showEnglishFontModal: function (onApply = null) {
+    const modalId = 'english-font-modal';
+    const { modal, modalContent } = ModalUtils.createModal(modalId, 'English Font Management');
+
+    const infoText = ModalUtils.createInfoText('Upload custom English fonts to use in the text font selector.');
+
+    const fontListContainer = document.createElement('div');
+    fontListContainer.className = 'font-list-container';
+    fontListContainer.id = 'english-font-list-container';
+    FontPriorityManager.updateEnglishFontListDisplay(fontListContainer);
+
+    const uploadSection = ModalUtils.createSection('upload-section');
+    const uploadTitle = document.createElement('h4');
+    uploadTitle.setAttribute('data-i18n', 'Upload Custom Font');
+    uploadTitle.textContent = i18n.t('Upload Custom Font');
+
+    const uploadInput = document.createElement('input');
+    uploadInput.type = 'file';
+    uploadInput.accept = '.ttf,.otf,.woff';
+    uploadInput.className = 'font-upload-input';
+    uploadInput.onchange = FontPriorityManager.handleEnglishFontUpload;
+
+    const uploadButton = ModalUtils.createButton('Choose Font File', 'upload-button', () => uploadInput.click());
+
+    uploadSection.appendChild(uploadTitle);
+    uploadSection.appendChild(uploadButton);
+    uploadSection.appendChild(uploadInput);
+
+    const applyButton = ModalUtils.createButton('Apply Changes', 'apply-button', () => {
+      FontPriorityManager.saveEnglishFontListToStorage();
+      ModalUtils.removeModal(modalId);
+      if (typeof onApply === 'function') {
+        onApply();
+      }
+    });
+
+    const buttonsContainer = ModalUtils.createButtonsContainer([applyButton]);
+
+    modalContent.appendChild(infoText);
+    modalContent.appendChild(fontListContainer);
+    modalContent.appendChild(uploadSection);
+    modalContent.appendChild(buttonsContainer);
+
+    ModalUtils.showModal(modal);
+  },
+
+  /**
    * Update the font list display in the modal
    */
   updateFontListDisplay: function (container) {
@@ -240,6 +292,53 @@ const FontPriorityManager = {
   },
 
   /**
+   * Update the English custom font list display
+   */
+  updateEnglishFontListDisplay: function (container) {
+    container.innerHTML = '';
+
+    const validFonts = [];
+    let listChanged = false;
+
+    FontPriorityManager.englishCustomFontList.forEach((fontName) => {
+      if (window[fontName]) {
+        validFonts.push(fontName);
+      } else {
+        console.warn(`Custom English font "${fontName}" no longer exists in window object, removing from list`);
+        listChanged = true;
+      }
+    });
+
+    if (listChanged) {
+      FontPriorityManager.englishCustomFontList = validFonts;
+      FontPriorityManager.saveEnglishFontListToStorage();
+    }
+
+    validFonts.forEach((fontName) => {
+      const fontItem = document.createElement('div');
+      fontItem.className = 'font-item';
+      fontItem.dataset.fontName = fontName;
+
+      const fontLabel = document.createElement('span');
+      fontLabel.className = 'font-label';
+      fontLabel.textContent = FontPriorityManager.getEnglishFontDisplayName(fontName);
+
+      const controlsContainer = document.createElement('div');
+      controlsContainer.className = 'font-controls';
+
+      const removeButton = document.createElement('button');
+      removeButton.textContent = '×';
+      removeButton.className = 'remove-button';
+      removeButton.onclick = () => FontPriorityManager.removeEnglishCustomFont(fontName);
+
+      controlsContainer.appendChild(removeButton);
+      fontItem.appendChild(fontLabel);
+      fontItem.appendChild(controlsContainer);
+      container.appendChild(fontItem);
+    });
+  },
+
+  /**
    * Get display name for font
    */
   getFontDisplayName: function (fontName) {
@@ -252,6 +351,22 @@ const FontPriorityManager = {
 
     if (fontName.startsWith('custom_')) {
       return fontName.replace('custom_', 'Custom: ');
+    }
+
+    return displayNames[fontName] || fontName;
+  },
+
+  /**
+   * Get display name for English fonts
+   */
+  getEnglishFontDisplayName: function (fontName) {
+    const displayNames = {
+      'TransportMedium': 'Transport Medium',
+      'TransportHeavy': 'Transport Heavy',
+    };
+
+    if (fontName.startsWith('customEng_')) {
+      return fontName.replace('customEng_', 'Custom: ');
     }
 
     return displayNames[fontName] || fontName;
@@ -324,6 +439,45 @@ const FontPriorityManager = {
   },
 
   /**
+   * Handle English font file upload
+   */
+  handleEnglishFontUpload: function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const font = opentype.parse(e.target.result);
+        const customFontName = `customEng_${file.name.replace(/\.[^/.]+$/, "")}`;
+
+        window[customFontName] = font;
+
+        if (!FontPriorityManager.englishCustomFontList.includes(customFontName)) {
+          FontPriorityManager.englishCustomFontList.unshift(customFontName);
+        }
+
+        FontPriorityManager.updateEnglishFontListDisplay(document.getElementById('english-font-list-container'));
+        FontPriorityManager.updateTextObjectsWithUploadedFont(customFontName);
+        FontPriorityManager.saveEnglishFontListToStorage();
+
+      } catch (error) {
+        console.error('Error parsing font:', error);
+        if (GeneralHandler && GeneralHandler.showToast) {
+          GeneralHandler.showToast(
+            'Failed to parse font file. Please ensure it\'s a valid font file.',
+            'warning',
+            4000
+          );
+        } else {
+          alert('Failed to parse font file. Please ensure it\'s a valid font file.');
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  },
+
+  /**
    * Remove custom font from priority list
    */
   removeCustomFont: function (fontName) {
@@ -335,6 +489,21 @@ const FontPriorityManager = {
         delete window[fontName];
       }
       FontPriorityManager.updateFontListDisplay(document.getElementById('font-list-container'));
+    }
+  },
+
+  /**
+   * Remove custom English font
+   */
+  removeEnglishCustomFont: function (fontName) {
+    const index = FontPriorityManager.englishCustomFontList.indexOf(fontName);
+    if (index > -1) {
+      FontPriorityManager.englishCustomFontList.splice(index, 1);
+      if (window[fontName]) {
+        delete window[fontName];
+      }
+      FontPriorityManager.updateEnglishFontListDisplay(document.getElementById('english-font-list-container'));
+      FontPriorityManager.saveEnglishFontListToStorage();
     }
   },
   /**
@@ -356,6 +525,14 @@ const FontPriorityManager = {
   },
 
   /**
+   * Save English custom fonts to localStorage
+   */
+  saveEnglishFontListToStorage: function () {
+    localStorage.setItem('englishCustomFontList', JSON.stringify(FontPriorityManager.englishCustomFontList));
+    setTimeout(() => FontPriorityManager.validateEnglishFonts(), 100);
+  },
+
+  /**
    * Load font priority from localStorage
    */
   loadFontPriorityFromStorage: function () {
@@ -372,10 +549,50 @@ const FontPriorityManager = {
   },
 
   /**
+   * Load English custom font list from localStorage
+   */
+  loadEnglishFontListFromStorage: function () {
+    const stored = localStorage.getItem('englishCustomFontList');
+    if (stored) {
+      try {
+        FontPriorityManager.englishCustomFontList = JSON.parse(stored);
+        setTimeout(() => FontPriorityManager.validateEnglishFonts(), 100);
+      } catch (e) {
+        console.warn('Failed to parse stored English font list');
+      }
+    }
+  },
+
+  /**
    * Get the current font priority list for use by other modules
    */
   getFontPriorityList: function () {
     return FontPriorityManager.fontPriorityList;
+  },
+
+  /**
+   * Get the current English custom font list
+   */
+  getEnglishCustomFontList: function () {
+    return FontPriorityManager.englishCustomFontList;
+  },
+
+  /**
+   * Get English font options for selectors
+   */
+  getEnglishFontOptions: function () {
+    const options = [
+      { value: 'TransportMedium', label: FontPriorityManager.getEnglishFontDisplayName('TransportMedium') },
+      { value: 'TransportHeavy', label: FontPriorityManager.getEnglishFontDisplayName('TransportHeavy') }
+    ];
+
+    FontPriorityManager.englishCustomFontList.forEach((fontName) => {
+      if (window[fontName]) {
+        options.push({ value: fontName, label: FontPriorityManager.getEnglishFontDisplayName(fontName) });
+      }
+    });
+
+    return options;
   },
   /**
    * Get override rules from localStorage
@@ -504,12 +721,14 @@ const FontPriorityManager = {
     try {
       // Reset font priority list to default
       FontPriorityManager.fontPriorityList = ['parsedFontKorean', 'parsedFontChinese', 'parsedFontHK'];
+      FontPriorityManager.englishCustomFontList = [];
 
       // Clear character override settings
       localStorage.removeItem('characterOverrideFont');
       localStorage.removeItem('specialCharacters');
       localStorage.removeItem('overrideFont');
       localStorage.removeItem('overrideRules');
+      localStorage.removeItem('englishCustomFontList');
       
       // Default rules
       const defaultRules = [{
@@ -526,7 +745,7 @@ const FontPriorityManager = {
 
       // Remove custom fonts from window object
       Object.keys(window).forEach(key => {
-        if (key.startsWith('custom_') && typeof window[key] === 'object' && window[key]?.getPath) {
+        if ((key.startsWith('custom_') || key.startsWith('customEng_')) && typeof window[key] === 'object' && window[key]?.getPath) {
           delete window[key];
         }
       });
@@ -568,8 +787,7 @@ const FontPriorityManager = {
       });
     } else {
       // For English-only text, show standard English fonts
-      fonts.push({ value: 'TransportMedium', label: 'Transport Medium' });
-      fonts.push({ value: 'TransportHeavy', label: 'Transport Heavy' });
+      fonts.push(...FontPriorityManager.getEnglishFontOptions());
     }
 
     return fonts;
@@ -595,6 +813,28 @@ const FontPriorityManager = {
     if (missingFonts.length > 0 && GeneralHandler && GeneralHandler.showToast) {
       GeneralHandler.showToast(
         `Warning: ${missingFonts.length} font(s) not found: ${missingFonts.join(', ')}. Please upload or remove them from the priority list.`,
+        'warning',
+        7000
+      );
+    }
+    return missingFonts;
+  },
+
+  /**
+   * Validate English custom fonts exist in window
+   */
+  validateEnglishFonts: function () {
+    const missingFonts = [];
+
+    FontPriorityManager.englishCustomFontList.forEach(fontName => {
+      if (window[fontName] === undefined) {
+        missingFonts.push(fontName);
+      }
+    });
+
+    if (missingFonts.length > 0 && GeneralHandler && GeneralHandler.showToast) {
+      GeneralHandler.showToast(
+        `Warning: ${missingFonts.length} English font(s) not found: ${missingFonts.join(', ')}. Please upload or remove them.`,
         'warning',
         7000
       );
