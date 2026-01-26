@@ -2403,21 +2403,24 @@ let FormTemplateComponent = {
 };
 
 // Use the shared settings listener implementation
-GeneralSettings.addListener(
-  GeneralHandler.createSettingsListener(8, function (setting, value) {
-    // Template-specific updates when settings change
-    if (setting === 'messageColor') {
-      // Redraw the templates grid with the new color
-      const parent = document.getElementById('input-form');
-      if (parent) {
-        const templatesGrid = parent.querySelector('.templates-grid');
-        if (templatesGrid) {
-          templatesGrid.remove();
-          FormTemplateComponent.createTemplatesGrid(parent);
+if (GeneralSettings && typeof GeneralSettings.addListener === 'function' &&
+  GeneralHandler && typeof GeneralHandler.createSettingsListener === 'function') {
+  GeneralSettings.addListener(
+    GeneralHandler.createSettingsListener(8, function (setting, value) {
+      // Template-specific updates when settings change
+      if (setting === 'messageColor') {
+        // Redraw the templates grid with the new color
+        const parent = document.getElementById('input-form');
+        if (parent) {
+          const templatesGrid = parent.querySelector('.templates-grid');
+          if (templatesGrid) {
+            templatesGrid.remove();
+            FormTemplateComponent.createTemplatesGrid(parent);
+          }
         }
       }
-    }
-  })
-);
+    })
+  );
+}
 
 export { FormTemplateComponent };

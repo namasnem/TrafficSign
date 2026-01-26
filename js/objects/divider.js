@@ -10,6 +10,9 @@ const canvas = CanvasGlobals.canvas; // Access the global canvas object
 function drawDivider(xHeight, color, position, size, type) {
 
     // Choose the template based on the horizontal parameter
+    if (!DividerScheme || typeof DividerScheme[type] !== 'function') {
+        return new GlyphPath();
+    }
     let dividerTemplate = DividerScheme[type](xHeight, position, size, { x: 0, y: 0 }).path;
 
     dividerTemplate.map(path => {
@@ -30,30 +33,33 @@ function drawDivider(xHeight, color, position, size, type) {
     return dividerShape;
 }
 
-class DividerObject extends BaseGroup {
+const SafeBaseGroup = BaseGroup || class {};
+
+class DividerObject extends SafeBaseGroup {
     constructor(options = {}) {
         super(null, options.dividerType, 'DividerObject', options); // Call BaseGroup constructor
 
         // Store divider-specific properties
         this.xHeight = options.xHeight;
         this.colorType = options.colorType;
-        this.color = options.color || BorderColorScheme[this.colorType]['border'];
+        const colorScheme = BorderColorScheme && this.colorType ? BorderColorScheme[this.colorType] : null;
+        this.color = options.color || (colorScheme ? colorScheme['border'] : '#000000');
         this.dividerType = options.dividerType; // 'VDivider', 'HDivider', 'HLine', 'VLane'
         this.borderGroup = options.borderGroup || null;
 
         // HLine divider adhere to text
         this.textObject = options.textObject || null;
 
-        this.leftValue = options.left;
-        this.aboveValue = options.top;
+        this.leftValue = options.leftValue ?? options.left;
+        this.aboveValue = options.aboveValue ?? options.top;
 
         // Legacy properties for compatibility with existing create functions
         this.leftObjects = options.leftObjects || [];
         this.rightObjects = options.rightObjects || [];
         this.aboveObjects = options.aboveObjects || [];
         this.belowObjects = options.belowObjects || [];
-        this.rightValue = options.rightValue;
-        this.belowValue = options.belowValue;
+        this.rightValue = options.rightValue ?? options.right;
+        this.belowValue = options.belowValue ?? options.bottom;
 
         // Properties to be set by the respective create functions
         // These will now be set directly in initialize
@@ -67,12 +73,22 @@ class DividerObject extends BaseGroup {
     }
 
     initialize() {
+        if (!this.borderGroup) {
+            return this.SS_initialize();
+        }
+
         if (this.dividerType !== 'HLine') {
             // placeholder meta, resize later in border assignWidthToDivider; if compartmentBox supplied, seed with its center
-            let objectBBox = { left: this.leftValue, top: this.aboveValue,  };
+            let objectBBox = { left: this.leftValue, top: this.aboveValue, };
             let objectSize = { width: 0, height: 0 };
             const basePoly = drawDivider(this.xHeight, this.color, objectBBox, objectSize, this.dividerType);
             this.setBasePolygon(basePoly, false);
+            if (!Array.isArray(this.borderGroup.HDivider)) {
+                this.borderGroup.HDivider = [];
+            }
+            if (!Array.isArray(this.borderGroup.VDivider)) {
+                this.borderGroup.VDivider = [];
+            }
             switch (this.dividerType) {
                 case 'HDivider': {
                     this.borderGroup.HDivider.push(this);
@@ -87,8 +103,10 @@ class DividerObject extends BaseGroup {
                     console.error('Unknown divider type:', this.dividerType);
                     return this;
             }
-            this.borderGroup.assignWidthToDivider();
-        } else {
+            if (typeof this.borderGroup.assignWidthToDivider === 'function') {
+                this.borderGroup.assignWidthToDivider();
+            }
+        } else if (this.textObject) {
             let objectBBox = { left: this.textObject.left, top: 0, right: 0, bottom: 0 };
             let objectSize = { width: this.textObject.width, height: this.xHeight / 4 };
             const basePoly = drawDivider(this.xHeight, this.color, objectBBox, objectSize, this.dividerType);
@@ -117,7 +135,9 @@ class DividerObject extends BaseGroup {
                 if (this.dividerType === 'HDivider' && !isNaN(parseInt(this.aboveValue))) {
                     hasFixedPrimary = true;
                     const fixedDistanceFromTop = parseInt(this.aboveValue);
-                    const borderCoords = canvas.calcViewportBoundaries();
+                    const borderCoords = typeof canvas.calcViewportBoundaries === 'function'
+                        ? canvas.calcViewportBoundaries()
+                        : (canvas.vptCoords || { tl: { x: 0, y: 0 }, br: { x: 0, y: 0 } });
                     const centerX = CanvasGlobals.CenterCoord().x;
                     aboveObject = { top: (borderCoords.tl.y + borderCoords.br.y) / 2, left: centerX, getBoundingRect: () => false };
                     this.fixedTopValue = fixedDistanceFromTop;
@@ -130,7 +150,9 @@ class DividerObject extends BaseGroup {
                 if (this.dividerType === 'HDivider' && !isNaN(parseInt(this.belowValue))) {
                     hasFixedSecondary = true;
                     const fixedDistanceFromBottom = parseInt(this.belowValue);
-                    const borderCoords = canvas.calcViewportBoundaries();
+                    const borderCoords = typeof canvas.calcViewportBoundaries === 'function'
+                        ? canvas.calcViewportBoundaries()
+                        : (canvas.vptCoords || { tl: { x: 0, y: 0 }, br: { x: 0, y: 0 } });
                     const centerX = CanvasGlobals.CenterCoord().x;
                     belowObject = { top: (borderCoords.tl.y + borderCoords.br.y) / 2, left: centerX, getBoundingRect: () => false };
                     this.fixedBottomValue = fixedDistanceFromBottom;
@@ -194,7 +216,9 @@ class DividerObject extends BaseGroup {
                 if (!isNaN(parseInt(this.leftValue))) {
                     hasFixedPrimary = true;
                     const fixedDistanceFromLeft = parseInt(this.leftValue);
-                    const borderCoords = canvas.calcViewportBoundaries();
+                    const borderCoords = typeof canvas.calcViewportBoundaries === 'function'
+                        ? canvas.calcViewportBoundaries()
+                        : (canvas.vptCoords || { tl: { x: 0, y: 0 }, br: { x: 0, y: 0 } });
                     const centerY = CanvasGlobals.CenterCoord().y;
                     leftObject = { left: (borderCoords.tl.x + borderCoords.br.x) / 2, top: centerY, getBoundingRect: () => false };
                     this.fixedLeftValue = fixedDistanceFromLeft;
@@ -206,7 +230,9 @@ class DividerObject extends BaseGroup {
                 if (!isNaN(parseInt(this.rightValue))) {
                     hasFixedSecondary = true;
                     const fixedDistanceFromRight = parseInt(this.rightValue);
-                    const borderCoords = canvas.calcViewportBoundaries();
+                    const borderCoords = typeof canvas.calcViewportBoundaries === 'function'
+                        ? canvas.calcViewportBoundaries()
+                        : (canvas.vptCoords || { tl: { x: 0, y: 0 }, br: { x: 0, y: 0 } });
                     const centerY = CanvasGlobals.CenterCoord().y;
                     rightObject = { left: (borderCoords.tl.x + borderCoords.br.x) / 2, top: centerY, getBoundingRect: () => false };
                     this.fixedRightValue = fixedDistanceFromRight;

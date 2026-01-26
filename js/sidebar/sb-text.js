@@ -100,7 +100,22 @@ let FormTextAddComponent = {
       const helpIcon2 = GeneralHandler.createHelpIconWithHint(fontToggle.parentElement, 'text/TextFont',);
       const helpIcon3 = GeneralHandler.createHelpIconWithHint(lineToggle.parentElement, 'divider/GantryLine',);
 
-      // Add font priority management button for Chinese fonts
+      // Add font management buttons (English first for visibility)
+      const englishFontButton = GeneralHandler.createButton(
+        'english-font-btn',
+        'English Font Upload',
+        textContentContainer,
+        'input',
+        () => FontPriorityManager.showEnglishFontModal(FormTextAddComponent.refreshTextFontToggle),
+        'click'
+      );
+      const englishFontInfo = GeneralHandler.createI18nNode(
+        'div',
+        { 'class': 'info-text' },
+        textContentContainer,
+        'Upload a custom English font to use in Text Font.',
+        'text'
+      );
       const fontPriorityButton = GeneralHandler.createButton('font-priority-btn', 'Chinese Font Setting', textContentContainer, 'input', FontPriorityManager.showModal, 'click');
       const englishFontButton = GeneralHandler.createButton(
         'english-font-btn',
@@ -426,9 +441,16 @@ let FormTextAddComponent = {
 
         // Check if the language toggle value matches the text object type
         const languageToggleValue = document.getElementById('Language-container').selected.getAttribute('data-value');
-        const isChineseSelected = languageToggleValue === 'Chinese';
         const isEnglishText = FormTextAddComponent.newTextObject && !FormTextAddComponent.newTextObject.containsNonAlphabetic;
-        // If there's a mismatch between text type and selected language, we need to translate
+        const containsNonEnglishInput = containsNonEnglishCharacters(newText);
+
+        // Allow manual Chinese input even if the Language toggle is set to English.
+        if (containsNonEnglishInput && languageToggleValue === 'English') {
+          FormTextAddComponent.newTextObject.updateText(newText, newXHeight, newFont, newColor);
+          return;
+        }
+
+        // If there's a mismatch between text type and selected language, translate only when a mapped destination exists.
         if ((isEnglishText && languageToggleValue === 'Chinese') || (!isEnglishText && languageToggleValue === 'English')) {
           // Find corresponding text in the other language
           const translatedText = FormTextAddComponent.findCorrespondingChineseText(newText, isEnglishText);

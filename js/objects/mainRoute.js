@@ -406,7 +406,14 @@ function calcRoundaboutVertices(type, xHeight, routeList) {
     const length = xHeight / 4
     const center = routeList[1] // use tip location
     const templateName = routeList[0].shape + ' ' + type
-    let roundel = roundelTemplate(templateName, routeList[1].length)
+    let roundel;
+    if (typeof roundelTemplate === 'function') {
+        roundel = roundelTemplate(templateName, routeList[1].length);
+    } else if (roadMapTemplate && roadMapTemplate[templateName]) {
+        roundel = JSON.parse(JSON.stringify(roadMapTemplate[templateName]));
+    } else {
+        roundel = { path: [{ vertex: [] }] };
+    }
     roundel = calcSymbol(roundel, length)
     roundel.path.map((p) => {
         let transformed = calculateTransformedPoints(p.vertex, {

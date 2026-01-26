@@ -513,7 +513,9 @@ function handlePivot(axis) {
     }
     if (typeof obj.updateAllCoord === 'function') obj.updateAllCoord();
     obj.setCoords();
+  if (typeof CanvasGlobals.scheduleRender === 'function') {
     CanvasGlobals.scheduleRender();
+  }
     canvas.fire('object:modified', { target: obj });
   } else {
     console.warn('Pivot Anchor: Target object or canvasID not found.');
@@ -589,12 +591,12 @@ async function anchorShape(inputShape1, inputShape2, options = {}, sourceList = 
   const vertexIndex1 = options.vertexIndex1 ? options.vertexIndex1 : await showTextBox('Enter vertex index for First Polygon:', 'E1')
   if (!vertexIndex1) {
     document.addEventListener('keydown', ShowHideSideBarEvent);
-    return Promise.reject('anchor_cancelled_vertex1');
+    return;
   }
   const vertexIndex2 = options.vertexIndex2 ? options.vertexIndex2 : await showTextBox('Enter vertex index for Second Polygon:', 'E1')
   if (!vertexIndex2) {
     document.addEventListener('keydown', ShowHideSideBarEvent);
-    return Promise.reject('anchor_cancelled_vertex2');
+    return;
   }
 
   // Check if object is already anchored in X axis
@@ -617,12 +619,12 @@ async function anchorShape(inputShape1, inputShape2, options = {}, sourceList = 
 
   const spacingX = options.spacingX != null ? options.spacingX :
     (isAlreadyAnchoredInX ? '' : await showTextBox('Enter spacing in X \n (Leave empty if no need for axis):', 0, 'keydown', null, xHeight));
-  if (spacingX == null) { document.addEventListener('keydown', ShowHideSideBarEvent); return Promise.reject('anchor_cancelled_spacingX'); }
+  if (spacingX == null) { document.addEventListener('keydown', ShowHideSideBarEvent); return; }
 
   // Check if object is already anchored in Y axis
   const spacingY = options.spacingY != null ? options.spacingY :
     (isAlreadyAnchoredInY ? '' : await showTextBox('Enter spacing in Y \n (Leave empty if no need for axis):', 0, 'keydown', null, xHeight));
-  if (spacingY == null) { document.addEventListener('keydown', ShowHideSideBarEvent); return Promise.reject('anchor_cancelled_spacingY'); }
+  if (spacingY == null) { document.addEventListener('keydown', ShowHideSideBarEvent); return; }
 
   const movingPoint = shape2.getBasePolygonVertex(vertexIndex1.toUpperCase())
   const targetPoint = shape1.getBasePolygonVertex(vertexIndex2.toUpperCase())
@@ -762,7 +764,9 @@ async function anchorShape(inputShape1, inputShape2, options = {}, sourceList = 
 
   document.addEventListener('keydown', ShowHideSideBarEvent);
 
-  CanvasGlobals.scheduleRender();
+  if (typeof CanvasGlobals.scheduleRender === 'function') {
+    CanvasGlobals.scheduleRender();
+  }
 
   // Track the regular anchoring operation in history
   // Only track if both X and Y aren't "EQ" (those are tracked separately)

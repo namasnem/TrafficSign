@@ -313,7 +313,9 @@ const BorderUtilities = {
 }
 
 // Define BorderGroup class that extends BaseGroup
-class BorderGroup extends BaseGroup {
+const SafeBaseGroup = BaseGroup || class {};
+
+class BorderGroup extends SafeBaseGroup {
   constructor(options = {}) {
     // Call the parent constructor with the base border and 'Border' functional type
     super(null, 'Border', 'BorderGroup', options);
@@ -329,8 +331,10 @@ class BorderGroup extends BaseGroup {
     this.left = options.left || 0;
     this.top = options.top || 0;
     this.dimensionAnnotations = [];
-    this.frame = BorderFrameWidth[this.borderType]; // Frame width for the border
-    this.defaultPadding = BorderPaddingWidth[this.borderType] || { left: 0, top: 0, right: 0, bottom: 0 };
+    const frameMap = BorderFrameWidth || {};
+    const paddingMap = BorderPaddingWidth || {};
+    this.frame = frameMap[this.borderType] ?? 0; // Frame width for the border
+    this.defaultPadding = paddingMap[this.borderType] || { left: 0, top: 0, right: 0, bottom: 0 };
     this.inbbox = null; // Inner border bounding box
     this.rounding = { x: 0, y: 0 }; // Rounding values for the border
     this.compartmentBboxes = []; // Array of compartment bounding boxes
@@ -340,6 +344,9 @@ class BorderGroup extends BaseGroup {
     // Cache for fixed dimension coordinates
     this.fixedWidthCoords = options.fixedWidthCoords || null;
     this.fixedHeightCoords = options.fixedHeightCoords || null;
+    if (!Array.isArray(this._metadataKeys)) {
+      this._metadataKeys = [];
+    }
     this._metadataKeys.push("fixedWidthCoords", "fixedHeightCoords");
 
     // Add status flag to track border updates
@@ -871,7 +878,9 @@ class BorderGroup extends BaseGroup {
       if (!this.fixedWidthCoords) {
         // Calculate fixed width coordinates only during initialization or if not cached
         if (this.widthObjects.length === 0) {
-          const borderCoords = canvas.calcViewportBoundaries();
+          const borderCoords = typeof canvas.calcViewportBoundaries === 'function'
+            ? canvas.calcViewportBoundaries()
+            : (canvas.vptCoords || { tl: { x: 0, y: 0 }, br: { x: 0, y: 0 } });
 
           if (!borderCoords || !borderCoords.tl || !borderCoords.br) {
             console.error('calcfixedBboxes: Invalid borderCoords:', borderCoords);
@@ -915,7 +924,9 @@ class BorderGroup extends BaseGroup {
       if (!this.fixedHeightCoords) {
         // Calculate fixed height coordinates only during initialization or if not cached
         if (this.heightObjects.length === 0) {
-          const borderCoords = canvas.calcViewportBoundaries();
+          const borderCoords = typeof canvas.calcViewportBoundaries === 'function'
+            ? canvas.calcViewportBoundaries()
+            : (canvas.vptCoords || { tl: { x: 0, y: 0 }, br: { x: 0, y: 0 } });
 
           if (!borderCoords || !borderCoords.tl || !borderCoords.br) {
             console.error('calcfixedBboxes: Invalid borderCoords:', borderCoords);
@@ -1120,10 +1131,16 @@ class BorderGroup extends BaseGroup {
           this.inbbox,
           d.functionalType
         );
-        d.replaceBasePolygon(res, false);
-        d.set({
-          left: this.inbbox.left + DividerMargin[d.functionalType]['left'] * d.xHeight / 4
-        });
+        if (typeof d.replaceBasePolygon === 'function') {
+          d.replaceBasePolygon(res, false);
+        }
+        if (typeof d.set === 'function') {
+          d.set({
+            left: this.inbbox.left + DividerMargin[d.functionalType]['left'] * d.xHeight / 4
+          });
+        } else {
+          d.left = this.inbbox.left + DividerMargin[d.functionalType]['left'] * d.xHeight / 4;
+        }
         const minTop = this.inbbox.top + (this.frame) * d.xHeight / 4;
         const maxTop = this.inbbox.bottom - (this.frame) * d.xHeight / 4 - d.height;
         const clampedTop = maxTop >= minTop ? Math.min(Math.max(initialTop, minTop), maxTop) : minTop;
@@ -1317,5 +1334,3 @@ class BorderGroup extends BaseGroup {
 
 
 export { BorderUtilities, BorderGroup }
-
-

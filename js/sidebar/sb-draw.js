@@ -10,6 +10,8 @@ let FormDrawAddComponent = {
   symbolAngle: 0,
   newSymbolObject: null,
   editingExistingSymbol: null, // Track when we're editing an existing symbol
+  customSymbols: {},
+  customSymbolStorageKey: 'customSymbols',
 
   drawPanelInit: async function (e, existingSymbol = null) {
     GeneralHandler.tabNum = 1
@@ -42,6 +44,8 @@ let FormDrawAddComponent = {
         color,
         FormDrawAddComponent.handleXHeightChange, FormDrawAddComponent.handleColorChange);
 
+      FormDrawAddComponent.renderCustomSymbolSection(parent);
+
 
       // Create a placeholder container for angle controls
       var angleControlContainer = GeneralHandler.createNode("div", { 'id': 'angle-control-container', 'class': 'input-group-container', 'style': 'display: none;' }, parent);
@@ -52,6 +56,157 @@ let FormDrawAddComponent = {
       }
 
       FormDrawAddComponent.addAllSymbolsButton()
+    }
+  },
+  renderCustomSymbolSection: function (parent) {
+    const container = GeneralHandler.createNode("div", { 'class': 'input-group-container', 'id': 'custom-symbols-container' }, parent);
+    GeneralHandler.createI18nNode('div', { 'class': 'placeholder' }, container, 'Custom Symbols', 'text');
+
+    const uploadInput = document.createElement('input');
+    uploadInput.type = 'file';
+    uploadInput.accept = '.json';
+    uploadInput.style.display = 'none';
+    uploadInput.addEventListener('change', FormDrawAddComponent.handleCustomSymbolUpload);
+
+    const uploadButton = GeneralHandler.createButton(
+      'custom-symbol-upload-btn',
+      'Upload Symbol JSON',
+      container,
+      'input',
+      () => uploadInput.click(),
+      'click'
+    );
+
+    container.appendChild(uploadInput);
+
+    GeneralHandler.createI18nNode(
+      'div',
+      { 'class': 'info-text' },
+      container,
+      'Upload a symbol JSON file to add it to the Symbols grid.',
+      'text'
+    );
+
+    const listContainer = GeneralHandler.createNode('div', { 'class': 'custom-symbol-list', 'id': 'custom-symbol-list' }, container);
+    FormDrawAddComponent.updateCustomSymbolList();
+  },
+
+  sanitizeSymbolName: function (rawName) {
+    const base = rawName.replace(/\.[^/.]+$/, '');
+    return base.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || 'CustomSymbol';
+  },
+
+  handleCustomSymbolUpload: function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        const rawName = parsed && parsed.name ? parsed.name : file.name;
+        const sanitizedName = FormDrawAddComponent.sanitizeSymbolName(rawName);
+        const symbolKey = `Custom_${sanitizedName}`;
+        const symbolData = parsed && parsed.path ? parsed : parsed?.symbol;
+
+        if (!symbolData || !Array.isArray(symbolData.path)) {
+          throw new Error('Invalid symbol format');
+        }
+
+        FormDrawAddComponent.addCustomSymbol(symbolKey, symbolData, true);
+        FormDrawAddComponent.addAllSymbolsButton();
+        FormDrawAddComponent.updateCustomSymbolList();
+
+        if (GeneralHandler && GeneralHandler.showToast) {
+          GeneralHandler.showToast(`Custom symbol "${symbolKey}" added.`, 'success', 3000);
+        }
+      } catch (error) {
+        console.error('Error parsing symbol JSON:', error);
+        if (GeneralHandler && GeneralHandler.showToast) {
+          GeneralHandler.showToast('Failed to parse symbol JSON. Please upload a valid symbol file.', 'warning', 4000);
+        }
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  },
+
+  addCustomSymbol: function (symbolKey, symbolData, persist = false) {
+    FormDrawAddComponent.customSymbols[symbolKey] = symbolData;
+    symbolsTemplate[symbolKey] = symbolData;
+    if (!symbolsPermittedAngle[symbolKey]) {
+      symbolsPermittedAngle[symbolKey] = [0];
+    }
+    if (persist) {
+      FormDrawAddComponent.saveCustomSymbolsToStorage();
+    }
+  },
+
+  removeCustomSymbol: function (symbolKey) {
+    delete FormDrawAddComponent.customSymbols[symbolKey];
+    delete symbolsTemplate[symbolKey];
+    delete symbolsPermittedAngle[symbolKey];
+    FormDrawAddComponent.saveCustomSymbolsToStorage();
+    FormDrawAddComponent.addAllSymbolsButton();
+    FormDrawAddComponent.updateCustomSymbolList();
+  },
+
+  updateCustomSymbolList: function () {
+    const listContainer = document.getElementById('custom-symbol-list');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    const symbols = Object.keys(FormDrawAddComponent.customSymbols);
+
+    if (symbols.length === 0) {
+      GeneralHandler.createI18nNode('div', { 'class': 'info-text' }, listContainer, 'No custom symbols uploaded yet.', 'text');
+      return;
+    }
+
+    symbols.forEach((symbolKey) => {
+      const row = document.createElement('div');
+      row.className = 'custom-symbol-row';
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.marginBottom = '6px';
+
+      const label = document.createElement('span');
+      label.className = 'font-label';
+      label.textContent = symbolKey;
+
+      const removeButton = document.createElement('button');
+      removeButton.className = 'remove-button';
+      removeButton.textContent = '×';
+      removeButton.addEventListener('click', () => FormDrawAddComponent.removeCustomSymbol(symbolKey));
+
+      row.appendChild(label);
+      row.appendChild(removeButton);
+      listContainer.appendChild(row);
+    });
+  },
+
+  saveCustomSymbolsToStorage: function () {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(FormDrawAddComponent.customSymbolStorageKey, JSON.stringify(FormDrawAddComponent.customSymbols));
+  },
+
+  loadCustomSymbolsFromStorage: function () {
+    if (typeof localStorage === 'undefined') return;
+    const stored = localStorage.getItem(FormDrawAddComponent.customSymbolStorageKey);
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object') {
+        Object.entries(parsed).forEach(([symbolKey, symbolData]) => {
+          if (symbolData && Array.isArray(symbolData.path)) {
+            FormDrawAddComponent.addCustomSymbol(symbolKey, symbolData, false);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to parse stored custom symbols');
     }
   },
 
@@ -679,26 +834,31 @@ let FormDrawAddComponent = {
 }
 
 // Use the shared settings listener implementation
-GeneralSettings.addListener(
-  GeneralHandler.createSettingsListener(1, function (setting, value) {
-    // Symbol-specific updates when settings change
-    if (setting === 'xHeight') {
-      if (FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol) {
-        const targetSymbol = FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol;
-        FormDrawAddComponent.updateSymbol(targetSymbol, { xHeight: value });
-      }
-    } else if (setting === 'messageColor') {
-      if (FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol) {
-        const targetSymbol = FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol;
-        FormDrawAddComponent.updateSymbol(targetSymbol, { color: value.toLowerCase() });
-      }
+if (GeneralSettings && typeof GeneralSettings.addListener === 'function' &&
+  GeneralHandler && typeof GeneralHandler.createSettingsListener === 'function') {
+  GeneralSettings.addListener(
+    GeneralHandler.createSettingsListener(1, function (setting, value) {
+      // Symbol-specific updates when settings change
+      if (setting === 'xHeight') {
+        if (FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol) {
+          const targetSymbol = FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol;
+          FormDrawAddComponent.updateSymbol(targetSymbol, { xHeight: value });
+        }
+      } else if (setting === 'messageColor') {
+        if (FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol) {
+          const targetSymbol = FormDrawAddComponent.newSymbolObject || FormDrawAddComponent.editingExistingSymbol;
+          FormDrawAddComponent.updateSymbol(targetSymbol, { color: value.toLowerCase() });
+        }
 
-      // Update all symbol buttons with new color
-      if (document.getElementById("input-form")) {
-        FormDrawAddComponent.addAllSymbolsButton();
+        // Update all symbol buttons with new color
+        if (document.getElementById("input-form")) {
+          FormDrawAddComponent.addAllSymbolsButton();
+        }
       }
-    }
-  })
-);
+    })
+  );
+}
+
+FormDrawAddComponent.loadCustomSymbolsFromStorage();
 
 export { FormDrawAddComponent };

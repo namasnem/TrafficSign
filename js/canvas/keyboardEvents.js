@@ -85,7 +85,12 @@ function handleArrowKeys(event) {
   });
 
   if (moved) {
-  CanvasGlobals.scheduleRender();
+    if (typeof CanvasGlobals.scheduleRender === 'function') {
+      CanvasGlobals.scheduleRender();
+    }
+    if (CanvasGlobals.canvas && typeof CanvasGlobals.canvas.renderAll === 'function') {
+      CanvasGlobals.canvas.renderAll();
+    }
   }
 }
 
