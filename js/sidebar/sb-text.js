@@ -11,10 +11,39 @@ import { DividerObject } from '../objects/divider.js';
 import { BorderGroup } from '../objects/border.js';
 
 let FormTextAddComponent = {
-  textFont: ['TransportMedium', 'TransportHeavy'],
   newTextObject: null,
   textLineInput: 1,
   justification: 'Left',
+  getTextFontOptions: function () {
+    return FontPriorityManager.getEnglishFontOptions();
+  },
+  refreshTextFontToggle: function () {
+    const textFontContainer = document.getElementById('Text Font-container');
+    if (!textFontContainer || !textFontContainer.parentElement) return;
+
+    const selectedValue = textFontContainer.selected?.getAttribute('data-value') || 'TransportMedium';
+    const inputContainer = textFontContainer.parentElement;
+    const parentContainer = inputContainer.parentElement;
+    const insertBefore = inputContainer.nextSibling;
+    inputContainer.remove();
+
+    const newToggle = GeneralHandler.createToggle(
+      'Text Font',
+      FormTextAddComponent.getTextFontOptions(),
+      parentContainer,
+      selectedValue,
+      FormTextAddComponent.newTextObject ? FormTextAddComponent.liveUpdateText : FormTextAddComponent.TextInputHandler
+    );
+    if (insertBefore) {
+      parentContainer.insertBefore(newToggle.parentElement, insertBefore);
+    }
+
+    if (FormTextAddComponent.newTextObject || CanvasGlobals.canvas.getActiveObject()?.functionalType === 'Text') {
+      FormTextAddComponent.liveUpdateText();
+    }
+
+    return newToggle;
+  },
 
   // Helper function to find corresponding Chinese text for English text
   findCorrespondingChineseText: function (engText, isEnglishText = true) {
@@ -65,7 +94,7 @@ let FormTextAddComponent = {
       const textInput = GeneralHandler.createInput('input-text', 'Add Text', textContentContainer, '', editingTextObject ? FormTextAddComponent.liveUpdateText : FormTextAddComponent.TextInputHandler, 'input');
       // Add the info text div for 2Liner mode
       const twoLinerInfo = GeneralHandler.createI18nNode('div', { 'id': 'two-liner-info', 'class': 'info-text', 'style': 'display: none;' }, textContentContainer, 'Text input is disabled in 2Liner mode. Select the location in the destination panel.', 'text');
-      const fontToggle = GeneralHandler.createToggle('Text Font', FormTextAddComponent.textFont, textContentContainer, 'TransportMedium', editingTextObject ? FormTextAddComponent.liveUpdateText : FormTextAddComponent.TextInputHandler);
+      const fontToggle = GeneralHandler.createToggle('Text Font', FormTextAddComponent.getTextFontOptions(), textContentContainer, 'TransportMedium', editingTextObject ? FormTextAddComponent.liveUpdateText : FormTextAddComponent.TextInputHandler);
       const lineToggle = GeneralHandler.createToggle('Underline', ['Yes', 'No'], textContentContainer, 'No', editingTextObject ? FormTextAddComponent.liveUpdateText : FormTextAddComponent.TextInputHandler);
       const helpIcon1 = GeneralHandler.createHelpIconWithHint(textInput.parentElement, 'text/Text',);
       const helpIcon2 = GeneralHandler.createHelpIconWithHint(fontToggle.parentElement, 'text/TextFont',);
@@ -73,6 +102,14 @@ let FormTextAddComponent = {
 
       // Add font priority management button for Chinese fonts
       const fontPriorityButton = GeneralHandler.createButton('font-priority-btn', 'Chinese Font Setting', textContentContainer, 'input', FontPriorityManager.showModal, 'click');
+      const englishFontButton = GeneralHandler.createButton(
+        'english-font-btn',
+        'English Font Setting',
+        textContentContainer,
+        'input',
+        () => FontPriorityManager.showEnglishFontModal(FormTextAddComponent.refreshTextFontToggle),
+        'click'
+      );
 
       // Create a container for location selection
       const locationContainer = GeneralHandler.createNode("div", { 'class': 'input-group-container' }, parent);
