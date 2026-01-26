@@ -4224,12 +4224,12 @@ const ChtDestinations = [{ "Hong Kong Island": ["香港", "香港(東)", "香港
 
 const BorderColorScheme = {
     "Blue Background": {
-        'background': 'rgb(0, 51, 162)',
+        'background': 'rgb(0, 121, 193)',
         'symbol': '#ffffff',
         'border': '#ffffff',
     },
     "Green Background": {
-        'background': 'rgb(0, 105, 40)',
+        'background': 'rgb(0, 112, 60)',
         'symbol': '#ffffff',
         'border': '#ffffff',
     },
@@ -4244,17 +4244,17 @@ const BorderColorScheme = {
         'border': 'rgb(0, 15, 162)',
     },
     "Yellow Background": {
-        'background': 'rgb(233, 181, 0)',
+        'background': 'rgb(255, 210, 0)',
         'symbol': '#000000',
         'border': '#000000',
     },
     "Brown Background": {
-        'background': 'rgb(117,75,42)',
+        'background': 'rgb(121,68,42)',
         'symbol': '#ffffff',
         'border': '#ffffff',
     },
     "Red Background": {
-        'background': 'rgb(224,0,0)',
+        'background': 'rgb(227,24,55)',
         'symbol': '#ffffff',
         'border': '#ffffff',
     },
