@@ -615,7 +615,7 @@ function parseFont() {
     loadFont(
       'https://fonts.gstatic.com/s/notosanstc/v38/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz75Ky_CpOtma3uNQ.ttf',
       buffer => { parsedFontChinese = opentype.parse(buffer); },
-      'NotoSansHK-Medium',
+      'NotoSansTC-Medium',
       { optional: true }
     ),
     loadFont(
