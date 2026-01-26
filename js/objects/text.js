@@ -24,7 +24,9 @@ const TRANSPORT_MISSING_CHARS = new Set([
   '←', '→', '↑', '↓', '↔', '↕', '⇒', '⇐', '⇑', '⇓'
 ]);
 
-class TextObject extends BaseGroup {
+const SafeBaseGroup = BaseGroup || class {};
+
+class TextObject extends SafeBaseGroup {
   constructor(options = {}) {
     options.color = options.color === 'White' ? '#ffffff' : (options.color === 'Black' ? '#000000' : options.color);
     // Call BaseGroup without base polygon
@@ -322,14 +324,19 @@ class TextObject extends BaseGroup {
     let fontFamily = font;
     
     try {
-      // Get override rules from FontPriorityManager
-      const rules = FontPriorityManager.getOverrideRules();
-      
-      // Find a rule that contains this character
-      const matchingRule = rules.find(rule => rule.characters.includes(actualChar));
-      
-      if (matchingRule) {
-        fontFamily = matchingRule.font;
+      if (FontPriorityManager && typeof FontPriorityManager.getOverrideRules === 'function') {
+        const rules = FontPriorityManager.getOverrideRules();
+        const matchingRule = rules.find(rule => rule.characters.includes(actualChar));
+        if (matchingRule) {
+          fontFamily = matchingRule.font;
+        }
+      } else if (FontPriorityManager && typeof FontPriorityManager.getOverrideFont === 'function') {
+        const specialChars = typeof FontPriorityManager.getSpecialCharactersArray === 'function'
+          ? FontPriorityManager.getSpecialCharactersArray()
+          : [];
+        if (specialChars.includes(actualChar)) {
+          fontFamily = FontPriorityManager.getOverrideFont();
+        }
       }
     } catch (error) {
       console.warn('Could not check special characters, using default font:', error);
@@ -401,7 +408,9 @@ class TextObject extends BaseGroup {
     const charPath = getFontPath(pathParams);
     charPath.fill = color;
     // Ensure opentype rounding patch is applied at point of use in TextObject
-    ensureOpenTypePatched();
+    if (typeof ensureOpenTypePatched === 'function') {
+      ensureOpenTypePatched();
+    }
     const charSVG = charPath.toPathData({ flipY: false });
     const charGlyph = fontGlyphs.charToGlyph(charParams.actualChar);
 

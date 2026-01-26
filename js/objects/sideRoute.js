@@ -118,7 +118,9 @@ function getSpirRdAboutSideRoadCoords(route, length, angle, center) {
 /**
  * SideRoadSymbol class extends baseGroup for side roads
  */
-export class SideRoadSymbol extends BaseGroup {
+const SafeBaseGroup = BaseGroup || class {};
+
+export class SideRoadSymbol extends SafeBaseGroup {
     constructor(options = {}) {
         // Initialize with null basePolygon, will set it later
         super(null, 'SideRoad', 'SideRoadSymbol', options);
