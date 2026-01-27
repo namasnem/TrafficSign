@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Font Modal</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .modal { display: none; border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .modal.show { display: block; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .font-item { padding: 10px; border: 1px solid #ddd; margin: 5px 0; }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+    <h1>English Font Upload Modal Test</h1>
+    
+    <button id="openModalBtn">Open English Font Upload Modal</button>
+    
+    <div id="englishFontModal" class="modal">
+        <h2>English Font Management</h2>
+        <div id="englishFontList" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0; min-height: 50px;">
+            <p>No fonts uploaded yet</p>
+        </div>
+        
+        <h3>Upload Custom Font</h3>
+        <button id="chooseFileBtn">Choose Font File</button>
+        <input type="file" id="fontUploadInput" accept=".ttf,.otf,.woff">
+        
+        <br><br>
+        
+        <button id="applyBtn">Apply Changes</button>
+        <button id="closeBtn">Close</button>
+    </div>
+
+    <script>
+        // Simulate the FontPriorityManager
+        const FontPriorityManager = {
+            englishCustomFontList: JSON.parse(localStorage.getItem('englishCustomFontList') || '[]'),
+
+            showEnglishFontModal: function() {
+                const modal = document.getElementById('englishFontModal');
+                modal.classList.add('show');
+                this.updateFontList();
+            },
+
+            closeModal: function() {
+                document.getElementById('englishFontModal').classList.remove('show');
+            },
+
+            updateFontList: function() {
+                const listDiv = document.getElementById('englishFontList');
+                if (this.englishCustomFontList.length === 0) {
+                    listDiv.innerHTML = '<p>No fonts uploaded yet</p>';
+                } else {
+                    listDiv.innerHTML = this.englishCustomFontList.map((font, index) => `
+                        <div class="font-item">
+                            <strong>${font}</strong>
+                            <button onclick="FontPriorityManager.removeFont(${index})">Remove</button>
+                        </div>
+                    `).join('');
+                }
+            },
+
+            handleFontUpload: function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                // Simulate reading the font name from the file
+                const fontName = `CustomFont_${Date.now()}`;
+                
+                if (!this.englishCustomFontList.includes(fontName)) {
+                    this.englishCustomFontList.unshift(fontName);
+                    console.log(`Font uploaded: ${fontName}`);
+                }
+                
+                this.updateFontList();
+                document.getElementById('fontUploadInput').value = '';
+            },
+
+            removeFont: function(index) {
+                this.englishCustomFontList.splice(index, 1);
+                this.updateFontList();
+            },
+
+            saveFonts: function() {
+                localStorage.setItem('englishCustomFontList', JSON.stringify(this.englishCustomFontList));
+                console.log('Fonts saved to localStorage:', this.englishCustomFontList);
+                this.closeModal();
+            }
+        };
+
+        // Event listeners
+        document.getElementById('openModalBtn').addEventListener('click', () => {
+            FontPriorityManager.showEnglishFontModal();
+        });
+
+        document.getElementById('chooseFileBtn').addEventListener('click', () => {
+            document.getElementById('fontUploadInput').click();
+        });
+
+        document.getElementById('fontUploadInput').addEventListener('change', (e) => {
+            FontPriorityManager.handleFontUpload(e);
+        });
+
+        document.getElementById('applyBtn').addEventListener('click', () => {
+            FontPriorityManager.saveFonts();
+        });
+
+        document.getElementById('closeBtn').addEventListener('click', () => {
+            FontPriorityManager.closeModal();
+        });
+
+        // Initialize
+        console.log('Test page loaded. Fonts in localStorage:', FontPriorityManager.englishCustomFontList);
+    </script>
+</body>
+</html>
