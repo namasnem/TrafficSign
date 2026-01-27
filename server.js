@@ -54,7 +54,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'traffic-sign-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || (() => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SESSION_SECRET environment variable is required in production');
+    }
+    console.warn('⚠️  WARNING: Using default session secret for development only');
+    return 'traffic-sign-secret-key-change-in-production';
+  })(),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -84,11 +90,25 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['.ttf', '.otf', '.woff', '.woff2'];
+    const allowedMimeTypes = [
+      'font/ttf',
+      'font/otf', 
+      'font/woff',
+      'font/woff2',
+      'application/x-font-ttf',
+      'application/x-font-otf',
+      'application/font-woff',
+      'application/font-woff2',
+      'application/octet-stream' // Browsers sometimes use this for fonts
+    ];
+    
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(ext)) {
+    const mimeType = file.mimetype;
+    
+    if (allowedTypes.includes(ext) && allowedMimeTypes.includes(mimeType)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only .ttf, .otf, .woff, .woff2 are allowed.'));
+      cb(new Error(`Invalid file type. Only ${allowedTypes.join(', ')} are allowed. Received: ${ext} (${mimeType})`));
     }
   }
 });
@@ -130,6 +150,10 @@ async function writeFontsMeta(fonts) {
 }
 
 function hashPassword(password) {
+  // NOTE: SHA-256 is used for simplicity in this demo/development version.
+  // For production, use bcrypt or argon2 for secure password hashing:
+  // const bcrypt = require('bcrypt');
+  // return bcrypt.hash(password, 10);
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 

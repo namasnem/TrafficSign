@@ -272,6 +272,17 @@ const AuthManager = {
    * Register new user
    */
   register: async function (username, password) {
+    // Client-side validation
+    if (!username || username.length < 3) {
+      AuthManager.showMessage('Username must be at least 3 characters', 'warning');
+      return false;
+    }
+    
+    if (!password || password.length < 6) {
+      AuthManager.showMessage('Password must be at least 6 characters', 'warning');
+      return false;
+    }
+    
     try {
       const response = await fetch(`${AuthManager.apiBaseUrl}/api/register`, {
         method: 'POST',
