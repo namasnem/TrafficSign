@@ -17,6 +17,7 @@ This implementation provides a **working demo/development version** with the fol
    - MIME type validation
    - File size limits (10MB per file)
    - User-specific file access
+   - **Multer 2.0.2** (patched vulnerabilities)
 
 3. **Input Validation**
    - Client-side validation (username ≥3, password ≥6)
@@ -28,6 +29,15 @@ This implementation provides a **working demo/development version** with the fol
    - User-specific font storage and retrieval
    - Session-based authentication
 
+### ✅ Fixed Security Issues
+
+1. **Multer Vulnerabilities (Fixed)**
+   - ✅ Upgraded from 1.4.5-lts.2 to 2.0.2
+   - ✅ Fixed: DoS via unhandled exception from malformed request
+   - ✅ Fixed: DoS via unhandled exception
+   - ✅ Fixed: DoS from maliciously crafted requests
+   - ✅ Fixed: DoS via memory leaks from unclosed streams
+
 ### ⚠️ Known Limitations (For Production)
 
 1. **Password Hashing**
@@ -35,17 +45,12 @@ This implementation provides a **working demo/development version** with the fol
    - Recommended: bcrypt or argon2
    - Upgrade instructions in code comments
 
-2. **Dependency Vulnerabilities**
-   - multer 1.4.5-lts.2 has known vulnerabilities
-   - Recommended: Upgrade to multer 2.x
-   - Note: May require code changes
-
-3. **Data Storage**
+2. **Data Storage**
    - Current: JSON files
    - Recommended: PostgreSQL or MongoDB
    - Reason: Better performance, transactions, backups
 
-4. **Additional Security Measures Needed**
+3. **Additional Security Measures Needed**
    - Rate limiting (prevent brute force)
    - CSRF protection
    - Email verification
@@ -75,11 +80,9 @@ This implementation provides a **working demo/development version** with the fol
   }
   ```
 
-- [ ] **Upgrade multer to version 2.x**
-  ```bash
-  npm install multer@latest
-  # Review and update multer code as needed
-  ```
+- [x] **~~Upgrade multer to version 2.x~~** ✅ Complete
+  - Upgraded to multer 2.0.2
+  - All DoS vulnerabilities patched
 
 - [ ] **Implement database**
   - Choose PostgreSQL or MongoDB
