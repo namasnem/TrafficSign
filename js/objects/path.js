@@ -574,98 +574,96 @@ function parseFont() {
   }
 
   // Start parsing and store the promise
-  fontParsingPromise = Promise.all([
-    fetch('./css/font/TransportMedium.woff')
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
+  const loadFont = (url, onLoad, label, { optional } = { optional: false }) => {
+    return fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.arrayBuffer();
+      })
       .then(buffer => {
-        // Ensure opentype is available before calling parse
-        if (typeof opentype !== 'undefined') {
-          parsedFontMedium = opentype.parse(buffer);
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse TransportMedium font.");
+        if (typeof opentype === 'undefined') {
+          throw new Error("opentype.js not loaded. Cannot parse font.");
         }
-      }).catch(e => { console.error("Error fetching/parsing TransportMedium:", e); throw e; }), // Re-throw to reject Promise.all
+        onLoad(buffer);
+      })
+      .catch(error => {
+        if (optional) {
+          console.warn(`Optional font failed to load/parsing ${label}:`, error);
+          return null;
+        }
+        console.error(`Error fetching/parsing ${label}:`, error);
+        throw error;
+      });
+  };
 
-    fetch('./css/font/TransportHeavy.woff')
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontHeavy = opentype.parse(buffer);
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse TransportHeavy font.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing TransportHeavy:", e); throw e; }),
+  const requiredFonts = [
+    loadFont(
+      './css/font/TransportMedium.woff',
+      buffer => { parsedFontMedium = opentype.parse(buffer); },
+      'TransportMedium'
+    ),
+    loadFont(
+      './css/font/TransportHeavy.woff',
+      buffer => { parsedFontHeavy = opentype.parse(buffer); },
+      'TransportHeavy'
+    ),
+    loadFont(
+      './css/font/TW-MOE-Std-Kai-compact.ttf',
+      buffer => { parsedFontKai = opentype.parse(buffer); },
+      'TW-MOE-Std-Kai-compact'
+    ),
+  ];
 
-    fetch('https://fonts.gstatic.com/s/notosanstc/v38/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz75Ky_CpOtma3uNQ.ttf')
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontChinese = opentype.parse(buffer);
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse NotoSansHK-Medium font.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing NotoSansHK-Medium:", e); throw e; }),
-
-    fetch('https://fonts.gstatic.com/s/notosanshk/v32/nKKF-GM_FYFRJvXzVXaAPe97P1KHynJFP716qEJ--oWTiYjNvVA.ttf') // Placeholder URL
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontHK = opentype.parse(buffer);
-          if (typeof window !== 'undefined') window.parsedFontHK = parsedFontHK;
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse parsedFontHK.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing parsedFontHK:", e); throw e; }),
-
-    fetch('https://fonts.gstatic.com/s/chocolateclassicalsans/v14/nuFqD-PLTZX4XIgT-P2ToCDudWHHflqUpTpfjWdDPI2J9mHITw.ttf') // Placeholder URL
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontChocolate = opentype.parse(buffer);
-          if (typeof window !== 'undefined') window.parsedFontChocolate = parsedFontChocolate;
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse parsedFontChocolate.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing parsedFontChocolate:", e); throw e; }),
-    
-      fetch('https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzztgyeLTq8H4hfeE.ttf')
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontKorean = opentype.parse(buffer);
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse NotoSansKR-Medium font.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing NotoSansKR-Medium:", e); throw e; }),
-
-    fetch('./css/font/TW-MOE-Std-Kai-compact.ttf')
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontKai = opentype.parse(buffer);
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse TW-MOE-Std-Kai-compact font.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing TW-MOE-Std-Kai-compact:", e); throw e; }),
-
+  const optionalFonts = [
+    loadFont(
+      'https://fonts.gstatic.com/s/notosanstc/v38/-nFuOG829Oofr2wohFbTp9ifNAn722rq0MXz75Ky_CpOtma3uNQ.ttf',
+      buffer => { parsedFontChinese = opentype.parse(buffer); },
+      'NotoSansTC-Medium',
+      { optional: true }
+    ),
+    loadFont(
+      'https://fonts.gstatic.com/s/notosanshk/v32/nKKF-GM_FYFRJvXzVXaAPe97P1KHynJFP716qEJ--oWTiYjNvVA.ttf',
+      buffer => {
+        parsedFontHK = opentype.parse(buffer);
+        if (typeof window !== 'undefined') window.parsedFontHK = parsedFontHK;
+      },
+      'parsedFontHK',
+      { optional: true }
+    ),
+    loadFont(
+      'https://fonts.gstatic.com/s/chocolateclassicalsans/v14/nuFqD-PLTZX4XIgT-P2ToCDudWHHflqUpTpfjWdDPI2J9mHITw.ttf',
+      buffer => {
+        parsedFontChocolate = opentype.parse(buffer);
+        if (typeof window !== 'undefined') window.parsedFontChocolate = parsedFontChocolate;
+      },
+      'parsedFontChocolate',
+      { optional: true }
+    ),
+    loadFont(
+      'https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzztgyeLTq8H4hfeE.ttf',
+      buffer => { parsedFontKorean = opentype.parse(buffer); },
+      'NotoSansKR-Medium',
+      { optional: true }
+    ),
     // Add Noto Sans as fallback for punctuation characters
-    fetch('https://fonts.gstatic.com/s/notosans/v39/o-0IIpQlx3QUlC5A4PNb4j5Ba_2c7A.ttf')
-      .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.arrayBuffer(); })
-      .then(buffer => {
-        if (typeof opentype !== 'undefined') {
-          parsedFontSans = opentype.parse(buffer);
-        } else {
-          throw new Error("opentype.js not loaded. Cannot parse NotoSans font.");
-        }
-      }).catch(e => { console.error("Error fetching/parsing NotoSans:", e); throw e; })
-  ]).then(() => {
-    console.log("All fonts parsed successfully.");
-    // Promise resolves with no value (void) upon success
-  }).catch(error => {
-    console.error("One or more fonts failed to load:", error);
-    fontParsingPromise = null; // Reset promise if parsing failed
-    throw error; // Re-throw so the caller knows about the failure
-  });
+    loadFont(
+      'https://fonts.gstatic.com/s/notosans/v39/o-0IIpQlx3QUlC5A4PNb4j5Ba_2c7A.ttf',
+      buffer => { parsedFontSans = opentype.parse(buffer); },
+      'NotoSans',
+      { optional: true }
+    ),
+  ];
+
+  fontParsingPromise = Promise.all(requiredFonts)
+    .then(() => Promise.allSettled(optionalFonts))
+    .then(() => {
+      console.log("Required fonts parsed successfully.");
+    })
+    .catch(error => {
+      console.error("One or more required fonts failed to load:", error);
+      fontParsingPromise = null; // Reset promise if parsing failed
+      throw error; // Re-throw so the caller knows about the failure
+    });
 
   return fontParsingPromise;
 }

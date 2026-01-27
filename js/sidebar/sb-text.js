@@ -117,14 +117,6 @@ let FormTextAddComponent = {
         'text'
       );
       const fontPriorityButton = GeneralHandler.createButton('font-priority-btn', 'Chinese Font Setting', textContentContainer, 'input', FontPriorityManager.showModal, 'click');
-      const englishFontButton = GeneralHandler.createButton(
-        'english-font-btn',
-        'English Font Setting',
-        textContentContainer,
-        'input',
-        () => FontPriorityManager.showEnglishFontModal(FormTextAddComponent.refreshTextFontToggle),
-        'click'
-      );
 
       // Create a container for location selection
       const locationContainer = GeneralHandler.createNode("div", { 'class': 'input-group-container' }, parent);
