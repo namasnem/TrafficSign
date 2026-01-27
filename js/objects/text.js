@@ -514,9 +514,13 @@ class TextObject extends SafeBaseGroup {
     } else if (fontFamily === 'parsedFontSans') {
       return parsedFontSans; // Return the sans serif fallback font
     } else if (fontFamily.startsWith('custom_')) {
-      // Handle custom fonts - they should have their font object in window
+      // Handle custom Chinese fonts - they should have their font object in window
       const customFont = window[fontFamily];
       return customFont || parsedFontChinese; // Fallback to default
+    } else if (fontFamily.startsWith('customEng_')) {
+      // Handle custom English fonts - they should have their font object in window
+      const customFont = window[fontFamily];
+      return customFont || parsedFontMedium; // Fallback to TransportMedium
     } else {
       return parsedFontChinese;
     }
