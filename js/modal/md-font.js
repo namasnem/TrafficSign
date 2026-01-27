@@ -7,17 +7,23 @@ import { ModalUtils } from './mdGeneral.js';
 import { GeneralHandler } from '../sidebar/sbGeneral.js';
 import { CanvasGlobals } from '../canvas/canvas.js';
 import { i18n } from '../i18n/i18n.js';
+import { AuthManager } from './md-auth.js';
 
 const FontPriorityManager = {
   fontPriorityList: ['parsedFontKorean', 'parsedFontChinese', 'parsedFontChocolate', 'parsedFontHK'], // Default priority
   englishCustomFontList: [],
+  apiBaseUrl: window.location.origin,
   /**
    * Initialize font priority system
    */
-  initialize: function () {
+  initialize: async function () {
     FontPriorityManager.loadFontPriorityFromStorage();
     FontPriorityManager.loadEnglishFontListFromStorage();
-
+    
+    // Load fonts from server if authenticated
+    if (AuthManager.isUserAuthenticated()) {
+      await FontPriorityManager.loadFontsFromServer();
+    }
   },
 
   /**
@@ -49,6 +55,7 @@ const FontPriorityManager = {
     uploadInput.type = 'file';
     uploadInput.accept = '.ttf,.otf,.woff';
     uploadInput.className = 'font-upload-input';
+    uploadInput.multiple = true; // Allow multiple file selection
     uploadInput.onchange = FontPriorityManager.handleFontUpload;
 
   const uploadButton = ModalUtils.createButton('Choose Font File', 'upload-button', () => uploadInput.click());
@@ -186,6 +193,7 @@ const FontPriorityManager = {
     uploadInput.type = 'file';
     uploadInput.accept = '.ttf,.otf,.woff';
     uploadInput.className = 'font-upload-input';
+    uploadInput.multiple = true; // Allow multiple file selection
     uploadInput.onchange = FontPriorityManager.handleEnglishFontUpload;
 
     const uploadButton = ModalUtils.createButton('Choose Font File', 'upload-button', () => uploadInput.click());
@@ -396,85 +404,145 @@ const FontPriorityManager = {
 
   /**
    * Handle font file upload
-   */  handleFontUpload: function (event) {
-    const file = event.target.files[0];
-    if (!file) return;
+   */  
+  handleFontUpload: async function (event) {
+    const files = Array.from(event.target.files);
+    if (!files || files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
+    // If authenticated, upload to server first
+    if (AuthManager.isUserAuthenticated()) {
       try {
-        // Parse the font using opentype.js
-        const font = opentype.parse(e.target.result);
-        const customFontName = `custom_${file.name.replace(/\.[^/.]+$/, "")}`;
-
-        // Store the font globally (you might want to add this to your font storage system)
-        window[customFontName] = font;
-
-        // Add to priority list
-        FontPriorityManager.fontPriorityList.unshift(customFontName);
-
-        // Update display
-        FontPriorityManager.updateFontListDisplay(document.getElementById('font-list-container'));
-
-        // Check for text objects that need this font and update them
-        FontPriorityManager.updateTextObjectsWithUploadedFont(customFontName);
-
-        // Save the updated priority list
-        FontPriorityManager.saveFontPriorityToStorage();
-
-      } catch (error) {
-        console.error('Error parsing font:', error);
+        await FontPriorityManager.uploadFontsToServer(files);
+        
         if (GeneralHandler && GeneralHandler.showToast) {
           GeneralHandler.showToast(
-            'Failed to parse font file. Please ensure it\'s a valid font file.',
+            `${files.length} font(s) uploaded to server successfully!`,
+            'success',
+            3000
+          );
+        }
+      } catch (error) {
+        if (GeneralHandler && GeneralHandler.showToast) {
+          GeneralHandler.showToast(
+            'Failed to upload to server. Font will be stored locally.',
             'warning',
             4000
           );
-        } else {
-          alert('Failed to parse font file. Please ensure it\'s a valid font file.');
         }
       }
-    };
-    reader.readAsArrayBuffer(file);
+    }
+
+    // Load fonts locally
+    for (const file of files) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          // Parse the font using opentype.js
+          const font = opentype.parse(e.target.result);
+          const customFontName = `custom_${file.name.replace(/\.[^/.]+$/, "")}`;
+
+          // Store the font globally (you might want to add this to your font storage system)
+          window[customFontName] = font;
+
+          // Add to priority list
+          if (!FontPriorityManager.fontPriorityList.includes(customFontName)) {
+            FontPriorityManager.fontPriorityList.unshift(customFontName);
+          }
+
+          // Update display
+          const container = document.getElementById('font-list-container');
+          if (container) {
+            FontPriorityManager.updateFontListDisplay(container);
+          }
+
+          // Check for text objects that need this font and update them
+          FontPriorityManager.updateTextObjectsWithUploadedFont(customFontName);
+
+          // Save the updated priority list
+          FontPriorityManager.saveFontPriorityToStorage();
+
+        } catch (error) {
+          console.error('Error parsing font:', error);
+          if (GeneralHandler && GeneralHandler.showToast) {
+            GeneralHandler.showToast(
+              `Failed to parse ${file.name}. Please ensure it's a valid font file.`,
+              'warning',
+              4000
+            );
+          } else {
+            alert(`Failed to parse ${file.name}. Please ensure it's a valid font file.`);
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   },
 
   /**
    * Handle English font file upload
    */
-  handleEnglishFontUpload: function (event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  handleEnglishFontUpload: async function (event) {
+    const files = Array.from(event.target.files);
+    if (!files || files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
+    // If authenticated, upload to server first
+    if (AuthManager.isUserAuthenticated()) {
       try {
-        const font = opentype.parse(e.target.result);
-        const customFontName = `customEng_${file.name.replace(/\.[^/.]+$/, "")}`;
-
-        window[customFontName] = font;
-
-        if (!FontPriorityManager.englishCustomFontList.includes(customFontName)) {
-          FontPriorityManager.englishCustomFontList.unshift(customFontName);
-        }
-
-        FontPriorityManager.updateEnglishFontListDisplay(document.getElementById('english-font-list-container'));
-        FontPriorityManager.updateTextObjectsWithUploadedFont(customFontName);
-        FontPriorityManager.saveEnglishFontListToStorage();
-
-      } catch (error) {
-        console.error('Error parsing font:', error);
+        await FontPriorityManager.uploadFontsToServer(files);
+        
         if (GeneralHandler && GeneralHandler.showToast) {
           GeneralHandler.showToast(
-            'Failed to parse font file. Please ensure it\'s a valid font file.',
+            `${files.length} English font(s) uploaded to server successfully!`,
+            'success',
+            3000
+          );
+        }
+      } catch (error) {
+        if (GeneralHandler && GeneralHandler.showToast) {
+          GeneralHandler.showToast(
+            'Failed to upload to server. Font will be stored locally.',
             'warning',
             4000
           );
-        } else {
-          alert('Failed to parse font file. Please ensure it\'s a valid font file.');
         }
       }
-    };
-    reader.readAsArrayBuffer(file);
+    }
+
+    for (const file of files) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const font = opentype.parse(e.target.result);
+          const customFontName = `customEng_${file.name.replace(/\.[^/.]+$/, "")}`;
+
+          window[customFontName] = font;
+
+          if (!FontPriorityManager.englishCustomFontList.includes(customFontName)) {
+            FontPriorityManager.englishCustomFontList.unshift(customFontName);
+          }
+
+          const container = document.getElementById('english-font-list-container');
+          if (container) {
+            FontPriorityManager.updateEnglishFontListDisplay(container);
+          }
+          FontPriorityManager.updateTextObjectsWithUploadedFont(customFontName);
+          FontPriorityManager.saveEnglishFontListToStorage();
+
+        } catch (error) {
+          console.error('Error parsing font:', error);
+          if (GeneralHandler && GeneralHandler.showToast) {
+            GeneralHandler.showToast(
+              `Failed to parse ${file.name}. Please ensure it's a valid font file.`,
+              'warning',
+              4000
+            );
+          } else {
+            alert(`Failed to parse ${file.name}. Please ensure it's a valid font file.`);
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   },
 
   /**
@@ -1016,6 +1084,83 @@ const FontPriorityManager = {
       }
     }
     return updatedCount;
+  },
+
+  /**
+   * Load fonts from server (when authenticated)
+   */
+  loadFontsFromServer: async function () {
+    try {
+      const response = await fetch(`${FontPriorityManager.apiBaseUrl}/api/fonts`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        console.warn('Failed to load fonts from server');
+        return;
+      }
+      
+      const fonts = await response.json();
+      
+      // Load each font
+      for (const fontMeta of fonts) {
+        try {
+          const fontResponse = await fetch(`${FontPriorityManager.apiBaseUrl}/api/fonts/${fontMeta.id}`, {
+            credentials: 'include'
+          });
+          
+          if (fontResponse.ok) {
+            const arrayBuffer = await fontResponse.arrayBuffer();
+            const font = opentype.parse(arrayBuffer);
+            const customFontName = `custom_${fontMeta.originalName.replace(/\.[^/.]+$/, "")}`;
+            
+            window[customFontName] = font;
+            
+            // Add to priority list if not already present
+            if (!FontPriorityManager.fontPriorityList.includes(customFontName)) {
+              FontPriorityManager.fontPriorityList.unshift(customFontName);
+            }
+          }
+        } catch (error) {
+          console.error(`Error loading font ${fontMeta.originalName}:`, error);
+        }
+      }
+      
+      // Save updated priority list to localStorage
+      FontPriorityManager.saveFontPriorityToStorage();
+    } catch (error) {
+      console.error('Error loading fonts from server:', error);
+    }
+  },
+
+  /**
+   * Upload fonts to server (when authenticated)
+   */
+  uploadFontsToServer: async function (files) {
+    try {
+      const formData = new FormData();
+      
+      for (const file of files) {
+        formData.append('fonts', file);
+      }
+      
+      const response = await fetch(`${FontPriorityManager.apiBaseUrl}/api/fonts`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Upload failed');
+      }
+      
+      const result = await response.json();
+      return result.fonts;
+    } catch (error) {
+      console.error('Error uploading fonts to server:', error);
+      throw error;
+    }
   },
 
 

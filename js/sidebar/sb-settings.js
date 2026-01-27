@@ -5,6 +5,7 @@ import { runTests, testToRun } from '../tests/test.js';
 import { FormExportComponent } from './sb-export.js';
 import { buildObjectsFromJSON } from '../objects/build.js';
 import { FontPriorityManager } from '../modal/md-font.js';
+import { AuthManager } from '../modal/md-auth.js';
 import { i18n } from '../i18n/i18n.js';
 
 // Define shortcuts in a constant object
@@ -138,6 +139,37 @@ let FormSettingsComponent = {
       GeneralHandler.createInput('auto-save-interval', 'Auto Save Interval (seconds)', performanceSettingsContainer,
         GeneralSettings.autoSaveInterval,
         FormSettingsComponent.changeAutoSaveInterval, 'input');
+
+      // Create a container for account settings
+      var accountSettingsContainer = GeneralHandler.createNode("div", { 'class': 'input-group-container' }, parent);
+      
+      // Add heading for account section
+      GeneralHandler.createI18nNode("h3", { 'class': 'panel-subheading' }, accountSettingsContainer, 'Account & Fonts', 'text');
+      
+      // Login/Logout button
+      const authButtonContainer = GeneralHandler.createNode("div", { 'class': 'auth-button-container', 'style': 'margin-bottom: 15px;' }, accountSettingsContainer);
+      
+      if (AuthManager.isUserAuthenticated()) {
+        // Show username and logout button
+        const userInfo = GeneralHandler.createNode("div", { 'style': 'color: #4CAF50; margin-bottom: 10px;' }, authButtonContainer);
+        userInfo.textContent = `Logged in as: ${AuthManager.getCurrentUser()}`;
+        
+        GeneralHandler.createButton('logout-button', 'Logout', authButtonContainer, 'input',
+          FormSettingsComponent.handleLogout, 'click');
+      } else {
+        // Show login button
+        GeneralHandler.createButton('login-button', 'Login / Register', authButtonContainer, 'input',
+          FormSettingsComponent.handleLogin, 'click');
+      }
+      
+      // Font management buttons
+      const fontButtonContainer = GeneralHandler.createNode("div", { 'class': 'font-button-container', 'style': 'display: flex; flex-direction: column; gap: 10px;' }, accountSettingsContainer);
+      
+      GeneralHandler.createButton('manage-chinese-fonts', 'Manage Chinese Fonts', fontButtonContainer, 'input',
+        FormSettingsComponent.openChineseFontModal, 'click');
+      
+      GeneralHandler.createButton('manage-english-fonts', 'Manage English Fonts', fontButtonContainer, 'input',
+        FormSettingsComponent.openEnglishFontModal, 'click');
 
       // Add save/reset buttons
       const buttonContainer = GeneralHandler.createNode("div", { 'class': 'settings-buttons-container' }, performanceSettingsContainer);
@@ -676,6 +708,28 @@ let FormSettingsComponent = {
 
     // Force canvas re-render
     CanvasGlobals.scheduleRender();
+  },
+
+  // Authentication handlers
+  handleLogin: function () {
+    AuthManager.showLoginModal();
+  },
+
+  handleLogout: async function () {
+    const success = await AuthManager.logout();
+    if (success) {
+      // Refresh the settings panel to show login button
+      FormSettingsComponent.settingsPanelInit();
+    }
+  },
+
+  // Font management handlers
+  openChineseFontModal: function () {
+    FontPriorityManager.showModal();
+  },
+
+  openEnglishFontModal: function () {
+    FontPriorityManager.showEnglishFontModal();
   }
 };
 
