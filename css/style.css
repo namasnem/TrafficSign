@@ -2500,6 +2500,8 @@ div.side-panel.close {
   padding: 15px;
   margin-bottom: 20px;
   border: 1px solid #555;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .font-item {
