@@ -71,6 +71,9 @@ app.use(session({
 }));
 
 // Serve static files
+app.use('/server_data', (req, res) => {
+  res.status(403).send('Forbidden');
+});
 app.use(express.static('.'));
 
 // Configure multer for font uploads
