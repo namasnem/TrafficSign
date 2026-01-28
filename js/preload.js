@@ -7,6 +7,7 @@ import { FormTextAddComponent } from './sidebar/sb-text.js'; // Import FormTextA
 import { DrawGrid } from './canvas/canvas.js'; // Import DrawGrid if needed
 import { activatePanelFromHash } from './sidebar/sidebar.js'; // Import activatePanelFromHash if needed
 import { i18n } from './i18n/i18n.js';
+import { AuthManager } from './modal/md-auth.js';
 
 
 // --- Initialization ---
@@ -15,6 +16,10 @@ async function preload() {
     try {
         console.log("Initializing application, parsing fonts...");
         // Show a loading indicator here if desired
+        
+        // Initialize authentication first
+        await AuthManager.initialize();
+        
         await parseFont(); // Call parseFont and wait for it to complete
         DrawGrid(); // Initialize grid drawing
         activatePanelFromHash(); // Initialize Draw panel by default

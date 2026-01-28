@@ -31,4 +31,7 @@ ads.txt
 # Exports
 export/
 
+# Server data
+server_data/
+
 source
