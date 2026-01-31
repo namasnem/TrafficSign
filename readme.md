@@ -109,10 +109,10 @@ npm run preview
 npm test
 
 # Run tests in watch mode
-npm test:watch
+npm run test:watch
 
 # Generate coverage report
-npm test:coverage
+npm run test:coverage
 ```
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
