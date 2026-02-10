@@ -552,10 +552,9 @@ class VertexControl extends fabric.Control {
         this.cleanupDrag();
         this.baseGroup.updateAllCoord(null, []);
 
-        // Call the appropriate onMove method for special object types
-        if (this.baseGroup.functionalType === 'MainRoad' && typeof this.baseGroup.onMove === 'function') {
-            this.baseGroup.onMove();
-        } else if (this.baseGroup.functionalType === 'SideRoad' && typeof this.baseGroup.onMove === 'function') {
+        // Trigger custom drag-finish behavior when available.
+        // Not all draggable groups implement onMove, so guard it.
+        if (typeof this.baseGroup.onMove === 'function') {
             this.baseGroup.onMove();
         }
 
