@@ -64,13 +64,13 @@ let FormDrawAddComponent = {
 
     const uploadInput = document.createElement('input');
     uploadInput.type = 'file';
-    uploadInput.accept = '.json';
+    uploadInput.accept = '.json,.svg';
     uploadInput.style.display = 'none';
     uploadInput.addEventListener('change', FormDrawAddComponent.handleCustomSymbolUpload);
 
     const uploadButton = GeneralHandler.createButton(
       'custom-symbol-upload-btn',
-      'Upload Symbol JSON',
+      'Upload Symbol JSON/SVG',
       container,
       'input',
       () => uploadInput.click(),
@@ -83,7 +83,7 @@ let FormDrawAddComponent = {
       'div',
       { 'class': 'info-text' },
       container,
-      'Upload a symbol JSON file to add it to the Symbols grid.',
+      'Upload a symbol JSON or SVG file to add it to the Symbols grid.',
       'text'
     );
 
@@ -103,11 +103,22 @@ let FormDrawAddComponent = {
     const reader = new FileReader();
     reader.onload = function (e) {
       try {
-        const parsed = JSON.parse(e.target.result);
-        const rawName = parsed && parsed.name ? parsed.name : file.name;
+        const fileContent = e.target.result;
+        const isSvgFile = file.name.toLowerCase().endsWith('.svg');
+
+        let symbolData = null;
+        let rawName = file.name;
+
+        if (isSvgFile) {
+          symbolData = FormDrawAddComponent.convertSvgToSymbolData(fileContent);
+        } else {
+          const parsed = JSON.parse(fileContent);
+          rawName = parsed && parsed.name ? parsed.name : file.name;
+          symbolData = parsed && parsed.path ? parsed : parsed?.symbol;
+        }
+
         const sanitizedName = FormDrawAddComponent.sanitizeSymbolName(rawName);
         const symbolKey = `Custom_${sanitizedName}`;
-        const symbolData = parsed && parsed.path ? parsed : parsed?.symbol;
 
         if (!symbolData || !Array.isArray(symbolData.path)) {
           throw new Error('Invalid symbol format');
@@ -121,14 +132,103 @@ let FormDrawAddComponent = {
           GeneralHandler.showToast(`Custom symbol "${symbolKey}" added.`, 'success', 3000);
         }
       } catch (error) {
-        console.error('Error parsing symbol JSON:', error);
+        console.error('Error parsing custom symbol file:', error);
         if (GeneralHandler && GeneralHandler.showToast) {
-          GeneralHandler.showToast('Failed to parse symbol JSON. Please upload a valid symbol file.', 'warning', 4000);
+          GeneralHandler.showToast('Failed to parse symbol file. Please upload a valid JSON or SVG file.', 'warning', 4000);
         }
       }
     };
     reader.readAsText(file);
     event.target.value = '';
+  },
+
+  convertSvgToSymbolData: function (svgText) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
+    const parserError = doc.querySelector('parsererror');
+    if (parserError) {
+      throw new Error('Invalid SVG content');
+    }
+
+    const pathElements = Array.from(doc.querySelectorAll('path[d]'));
+    if (pathElements.length === 0) {
+      throw new Error('SVG must contain at least one <path> element');
+    }
+
+    const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    tempSvg.setAttribute('width', '0');
+    tempSvg.setAttribute('height', '0');
+    tempSvg.style.position = 'absolute';
+    tempSvg.style.visibility = 'hidden';
+    tempSvg.style.pointerEvents = 'none';
+    document.body.appendChild(tempSvg);
+
+    try {
+      const paths = [];
+      const allPoints = [];
+
+      pathElements.forEach((sourcePath, pathIndex) => {
+        const d = sourcePath.getAttribute('d');
+        if (!d) return;
+
+        const measurePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        measurePath.setAttribute('d', d);
+        tempSvg.appendChild(measurePath);
+
+        const pathLength = measurePath.getTotalLength();
+        if (!Number.isFinite(pathLength) || pathLength <= 0) {
+          return;
+        }
+
+        const sampleCount = Math.max(24, Math.min(360, Math.ceil(pathLength / 3)));
+        const vertices = [];
+
+        for (let i = 0; i < sampleCount; i++) {
+          const point = measurePath.getPointAtLength((i / sampleCount) * pathLength);
+          const vertex = {
+            x: point.x,
+            y: point.y,
+            label: `V${pathIndex}_${i}`
+          };
+          vertices.push(vertex);
+          allPoints.push(vertex);
+        }
+
+        if (vertices.length >= 3) {
+          paths.push({
+            vertex: vertices,
+            arcs: [],
+            fill: 'white'
+          });
+        }
+      });
+
+      if (paths.length === 0 || allPoints.length === 0) {
+        throw new Error('No drawable SVG paths found');
+      }
+
+      const minX = Math.min(...allPoints.map(p => p.x));
+      const maxX = Math.max(...allPoints.map(p => p.x));
+      const minY = Math.min(...allPoints.map(p => p.y));
+      const maxY = Math.max(...allPoints.map(p => p.y));
+      const width = Math.max(maxX - minX, 1);
+      const height = Math.max(maxY - minY, 1);
+      const scale = 4 / Math.max(width, height);
+
+      paths.forEach(path => {
+        path.vertex.forEach(vertex => {
+          vertex.x = (vertex.x - minX) * scale;
+          vertex.y = (vertex.y - minY) * scale;
+        });
+      });
+
+      return {
+        path: paths,
+        text: []
+      };
+    } finally {
+      tempSvg.remove();
+    }
   },
 
   addCustomSymbol: function (symbolKey, symbolData, persist = false) {

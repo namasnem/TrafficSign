@@ -163,7 +163,8 @@ function hashPassword(password) {
 // Auth routes
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = req.body.password;
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
@@ -187,7 +188,14 @@ app.post('/api/register', async (req, res) => {
     await writeUsers(users);
     
     req.session.userId = username;
-    res.json({ success: true, username });
+    req.session.save((sessionError) => {
+      if (sessionError) {
+        console.error('Session save error during registration:', sessionError);
+        return res.status(500).json({ error: 'Registration failed' });
+      }
+
+      res.json({ success: true, username });
+    });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
@@ -196,7 +204,8 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = req.body.password;
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
@@ -210,7 +219,14 @@ app.post('/api/login', async (req, res) => {
     }
     
     req.session.userId = username;
-    res.json({ success: true, username });
+    req.session.save((sessionError) => {
+      if (sessionError) {
+        console.error('Session save error during login:', sessionError);
+        return res.status(500).json({ error: 'Login failed' });
+      }
+
+      res.json({ success: true, username });
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
@@ -222,6 +238,7 @@ app.post('/api/logout', (req, res) => {
     if (err) {
       return res.status(500).json({ error: 'Logout failed' });
     }
+    res.clearCookie('connect.sid');
     res.json({ success: true });
   });
 });
