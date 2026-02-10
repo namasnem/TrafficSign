@@ -49,7 +49,7 @@ class GlyphPath extends fabric.Group {
   }
 
   initialize(shapeMeta, options) {
-    shapeMeta.path.map((p) => {
+    shapeMeta.path.forEach((p) => {
       let transformed = calculateTransformedPoints(p.vertex, {
         x: options.left,
         y: options.top,
@@ -59,7 +59,7 @@ class GlyphPath extends fabric.Group {
     });
 
     if (shapeMeta.text) {
-      shapeMeta.text.map((p) => {
+      shapeMeta.text.forEach((p) => {
         let transformed = calculateTransformedPoints([{ x: p.x, y: -p.y, label: '' }], {
           x: options.left,
           y: options.top,

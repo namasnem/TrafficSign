@@ -884,7 +884,7 @@ function convertFontPathToFabricPath(commands, textElem) {
  * @return {void}
  */
 function assignVertexLabel(vertexList) {
-  vertexList.map((vertex, index) => {
+  vertexList.forEach((vertex, index) => {
     vertex.label = `V${index + 1}`;
     vertex.start = index === 0 ? 1 : 0;
   });

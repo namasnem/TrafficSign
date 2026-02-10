@@ -15,7 +15,7 @@ function drawDivider(xHeight, color, position, size, type) {
     }
     let dividerTemplate = DividerScheme[type](xHeight, position, size, { x: 0, y: 0 }).path;
 
-    dividerTemplate.map(path => {
+    dividerTemplate.forEach(path => {
         path.fill = color;
     });
 

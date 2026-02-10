@@ -8,7 +8,7 @@ import { calculateTransformedPoints } from './path.js';
  * @return {void}
  */
 export function assignVertexLabel(vertexList) {
-    vertexList.map((vertex, index) => {
+    vertexList.forEach((vertex, index) => {
         vertex.label = `V${index + 1}`
         vertex.start = index == 0 ? 1 : 0
     })
@@ -26,13 +26,13 @@ export function getSideRoadCoords(route, length, left, right) {
     let arrowTipPath = JSON.parse(JSON.stringify(roadMapTemplate[route.shape]))
     // Apply vertex and arc scaling to each path
     arrowTipPath.path.forEach((path) => {
-        path.vertex.map((v) => { v.x *= route.width / 2; v.y *= route.width / 2; v.radius *= route.width / 2 })
+        path.vertex.forEach((v) => { v.x *= route.width / 2; v.y *= route.width / 2; v.radius *= route.width / 2 })
         if (path.arcs) {
-            path.arcs.map((a) => { a.radius *= route.width / 2 })
+            path.arcs.forEach((a) => { a.radius *= route.width / 2 })
         }
     })
     arrowTipPath = calcSymbol(arrowTipPath, length)
-    arrowTipPath.path.map((p) => {
+    arrowTipPath.path.forEach((p) => {
         let transformed = calculateTransformedPoints(p.vertex, {
             x: route.x,
             y: route.y,
