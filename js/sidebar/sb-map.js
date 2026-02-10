@@ -391,13 +391,6 @@ let FormDrawMapComponent = {
    * @return {void}
    */
   drawMainRoadOnCursor: function (event, params = null) {
-    // Remove existing event listeners first to avoid duplicates
-    FormDrawMapComponent.drawRoadsHandlerOff();
-
-    canvas.discardActiveObject();
-    document.removeEventListener('keydown', CanvasGlobals.Show);
-    document.addEventListener('keydown', FormDrawMapComponent.cancelDraw);
-
     // Get parameters either from DOM elements or provided params
     let xHeight, rootLength, tipLength, color, width, shape, roadType, RAfeature, mainAngle, innerCornerRadius, outerCornerRadius;
 
@@ -416,6 +409,16 @@ let FormDrawMapComponent = {
     } else {
       return;
     }
+
+    // Remove existing event listeners first to avoid duplicates.
+    // This must happen only when we have valid params, otherwise we can
+    // cancel an in-progress placement without creating a replacement preview.
+    FormDrawMapComponent.drawRoadsHandlerOff();
+
+    canvas.discardActiveObject();
+    document.removeEventListener('keydown', CanvasGlobals.Show);
+    document.addEventListener('keydown', FormDrawMapComponent.cancelDraw);
+
     // Determine which vertex to use as the active vertex for tracking
     // For roundabouts, use C1 (center) vertex, otherwise use V1
     const activeVertexLabel = (roadType === 'Conventional Roundabout' || roadType === 'Spiral Roundabout') ? 'C1' : 'V1';
