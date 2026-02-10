@@ -553,9 +553,7 @@ class VertexControl extends fabric.Control {
         this.baseGroup.updateAllCoord(null, []);
 
         // Call the appropriate onMove method for special object types
-        if (this.baseGroup.functionalType === 'MainRoad' && typeof this.baseGroup.onMove === 'function') {
-            this.baseGroup.onMove();
-        } else if (this.baseGroup.functionalType === 'SideRoad' && typeof this.baseGroup.onMove === 'function') {
+        if (this.baseGroup.onMove && typeof this.baseGroup.onMove === 'function') {
             this.baseGroup.onMove();
         }
 

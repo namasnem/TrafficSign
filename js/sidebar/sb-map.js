@@ -3,7 +3,6 @@ import { GeneralSettings, GeneralHandler } from './sbGeneral.js';
 import { CanvasGlobals } from '../canvas/canvas.js';
 import { MainRoadSymbol, calcVertexType, calculateMainRoadBottomY } from '../objects/mainRoute.js';
 import { SideRoadSymbol } from '../objects/sideRoute.js';
-import { roadMapTemplate, roundelTemplate } from '../objects/template.js';
 import { HintLoader } from '../utils/hintLoader.js';
 import { i18n } from '../i18n/i18n.js';
 
@@ -139,7 +138,7 @@ let FormDrawMapComponent = {
       // Roundabout settings
 
       // 1. Roundel Type Toggle (Conventional vs Spiral)
-      const roundelToggle = GeneralHandler.createToggle('Roundel Shape', ['Conventional', 'Spiral'], roadTypeSettingsContainer, 'Conventional', FormDrawMapComponent.onRoundelTypeChange);
+      GeneralHandler.createToggle('Roundel Shape', ['Conventional', 'Spiral'], roadTypeSettingsContainer, 'Conventional', FormDrawMapComponent.onRoundelTypeChange);
 
       // Use custom image dropdown for Roundabout Shape
       GeneralHandler.createImageDropdown('Main Road Shape', FormDrawMapComponent.RoundaboutFeatures['Conventional'], roadTypeSettingsContainer, 'Normal', FormDrawMapComponent.drawMainRoadOnCursor);
@@ -391,6 +390,11 @@ let FormDrawMapComponent = {
    * @return {void}
    */
   drawMainRoadOnCursor: function (event, params = null) {
+    // Guard: don't clear handlers if no params provided (prevents cancelling active placement)
+    if (!params) {
+      return;
+    }
+
     // Remove existing event listeners first to avoid duplicates
     FormDrawMapComponent.drawRoadsHandlerOff();
 

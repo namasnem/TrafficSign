@@ -818,12 +818,24 @@ function showPropertyPanel(object) {
       specialProps.push({ label: 'Side Roads', value: object.sideRoad.length });
       break;
     case 'SideRoad':
+      // Check if this is a base roundabout route (Base Conventional/Spiral Normal/Auxiliary)
+      const isBaseRoundabout = object.isBase || 
+                               (object.routeList && object.routeList[0] && 
+                                (object.routeList[0].isBase || 
+                                 (object.routeList[0].shape && object.routeList[0].shape.startsWith('Base '))));
+      
       specialProps = [
         { label: 'Parent Road', value: object.mainRoad?.roadType || '' },
         { label: 'Branch Index', value: object.branchIndex },
-        { label: 'Shape', key: 'shape', type: 'select', options: ['Arrow', 'Stub'], editable: true, value: object.routeList[0].shape },
-        { label: 'Angle', key: 'angle', type: 'select', options: [45, 60, 90], editable: true, value: object.routeList[0].angle }
       ];
+      
+      // Only add Shape and Angle controls if NOT a base roundabout
+      if (!isBaseRoundabout) {
+        specialProps.push(
+          { label: 'Shape', key: 'shape', type: 'select', options: ['Arrow', 'Stub', 'RedBar', 'Circular Sign', 'Circular Sign (with Arrow)'], editable: true, value: object.routeList[0].shape },
+          { label: 'Angle', key: 'angle', type: 'select', options: [45, 60, 90], editable: true, value: object.routeList[0].angle }
+        );
+      }
       // Add event listener for SideRoad shape and angle directly if not covered by generic select
       // This part might be redundant if the generic select handler covers it.
       // We will rely on the handleSelectInputChange to manage SideRoad specific updates.

@@ -167,7 +167,7 @@ function processVertexListAndArcs(vertexList, arcList, remainingPath = []) {
         id = id - 1 == 0 ? vertexList.length : id - 1;
         return `V${id}`;
     }
-    arcList.map(arc => {
+    arcList.forEach(arc => {
         arc.start = shiftV(arc.start, vertexList);
         arc.end = shiftV(arc.end, vertexList);
     });
@@ -415,7 +415,7 @@ function calcRoundaboutVertices(type, xHeight, routeList) {
         roundel = { path: [{ vertex: [] }] };
     }
     roundel = calcSymbol(roundel, length)
-    roundel.path.map((p) => {
+    roundel.path.forEach((p) => {
         let transformed = calculateTransformedPoints(p.vertex, {
             x: center.x,
             y: center.y,
