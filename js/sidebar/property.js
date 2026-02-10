@@ -818,11 +818,18 @@ function showPropertyPanel(object) {
       specialProps.push({ label: 'Side Roads', value: object.sideRoad.length });
       break;
     case 'SideRoad':
-      // Check if this is a base roundabout route (Base Conventional/Spiral Normal/Auxiliary)
-      const isBaseRoundabout = object.isBase || 
-                               (object.routeList && object.routeList[0] && 
-                                (object.routeList[0].isBase || 
-                                 (object.routeList[0].shape && object.routeList[0].shape.startsWith('Base '))));
+      // Helper function to check if a side road is a base roundabout route
+      const isBaseRoundaboutRoute = (sideRoadObj) => {
+        if (sideRoadObj.isBase) return true;
+        if (sideRoadObj.routeList && sideRoadObj.routeList[0]) {
+          const firstRoute = sideRoadObj.routeList[0];
+          if (firstRoute.isBase) return true;
+          if (firstRoute.shape && firstRoute.shape.startsWith('Base ')) return true;
+        }
+        return false;
+      };
+      
+      const isBaseRoundabout = isBaseRoundaboutRoute(object);
       
       specialProps = [
         { label: 'Parent Road', value: object.mainRoad?.roadType || '' },
